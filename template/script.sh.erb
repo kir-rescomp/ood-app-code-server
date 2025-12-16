@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+module purge
+module load code-server/4.106.3
+
+# Set our working directory.
+export WORKING_DIR="<%= session.staged_root %>"
+
+
+# Ensure that code-server always starts up in either a user defined directory or the home directory.
+if [ ! -e "${WORKING_DIR}" ]; then
+    ${WORKING_DIR}="$HOME"
+elif [ -f "${WORKING_DIR}" ]; then
+    ${WORKING_DIR}="$(dirname "${WORKING_DIR}")"
+fi
+
+CODE_SERVER_DATAROOT="$HOME/.local/share/code-server"
+mkdir -p "$CODE_SERVER_DATAROOT/extensions"
+
+
+# Print compute node.
+echo "$(date): Running on compute node ${host}:$port"
+
+
+#Probably not needed but leaving as it is for the moment as per upstream record. 
+CPP_FILE="${WORKING_DIR}/.vscode/c_cpp_properties.json"
+
+if [[ -f "$CPP_FILE" ]]; then
+    CPP_DIR="${TMPDIR:=/tmp/$USER}/cpp-vscode"
+    mkdir -p "$CPP_DIR"
+    chmod 700 "$CPP_DIR"
+
+    # if the file is empty, let's initialize it
+    [ -s "$CPP_FILE" ] || echo '{"configurations": [{ "name": "Linux", "browse": { "databaseFilename": null }}], "version": 4}' > "$CPP_FILE"
+
+    jq --arg dbfile "$CPP_DIR/cpp-vscode.db" \
+      '.configurations[0].browse.databaseFilename = $dbfile' \
+      "$CPP_FILE" > "$CPP_FILE".new
+
+    mv "$CPP_FILE".new "$CPP_FILE"
+  fi
+
+#
+# Start Code Server.
+#
+echo "$(date): Started code-server"
+echo ""
+
+## Fix terminal colors for ls command with a wrapper script for system ls
+#mkdir -p ~/ondemand/ood_bin
+#cat > ~/ondemand/ood_bin/ls <<'EOF'
+#!/bin/bash
+#/usr/bin/ls --color=auto "$@"
+#EOF
+
+#chmod +x ~/ondemand/ood_bin/ls
+#export PATH="$HOME/ondemand/ood_bin:$PATH"
+
+#avoid using ${host} for --bind-addr
+code-server \
+    --auth="password" \
+    --bind-addr="0.0.0.0:${BIND_PORT}" \
+    --disable-telemetry \
+    --user-data-dir="${CODE_SERVER_DATAROOT}" \
+    --extensions-dir="$CODE_SERVER_DATAROOT/extensions" \
+    --log debug
