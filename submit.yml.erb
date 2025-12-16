@@ -1,0 +1,12 @@
+---
+batch_connect:
+  template: "basic"
+
+script:
+  queue_name: "<%= auto_queues %>"
+  wall_time: "<%= bc_num_hours.to_i * 3600 %>"
+  email_on_started: false
+  native:
+    - "--ntasks=1"
+    - "--cpus-per-task=<%= cores %>"
+    - "--mem=<%= ram %>G"

@@ -1,0 +1,17 @@
+# Export the module function if it exists
+[[ $(type -t module) == "function" ]] && export -f module
+
+# Find available port to run server on
+port=$(find_port ${host})
+JUPYTER_PORT="${port}"
+HOST_CFG="${host}"
+PORT_CFG="${port}"
+
+export BIND_PORT=$port
+password="$(create_passwd 16)"
+PASSWORD=$password
+
+echo "host is: ${host}"
+echo "port is: ${port}"
+
+export password PASSWORD
