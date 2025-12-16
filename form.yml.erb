@@ -1,0 +1,38 @@
+---
+cluster: "slurm"
+
+attributes:
+  auto_queues:
+    widget: "select"
+    label: "Partition/Queue"
+    options:
+      - "short"
+      - "long"
+    value: "short"
+
+  cores:
+    widget: "number_field"
+    label: "Number of cores"
+    min: 1
+    max: 8
+    value: 2
+
+  ram:
+    widget: "number_field"
+    label: "Memory (GB)"
+    min: 1
+    max: 64
+    value: 4
+
+  bc_num_hours:
+    widget: "number_field"
+    label: "Number of hours"
+    min: 1
+    max: 30:00:00
+    value: 2
+
+form:
+  - auto_queues
+  - cores
+  - ram
+  - bc_num_hours
