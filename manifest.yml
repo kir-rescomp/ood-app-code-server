@@ -1,0 +1,7 @@
+---
+name: code-server
+category: Interactive Apps
+subcategory: Servers
+role: batch_connect
+description: |
+  This will launch Code Server ( VScode)
