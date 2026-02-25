@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 module purge
+module use "/apps/eb/el8/skylake/modules/all"
+module use "/apps/kir/eb/skylake/modules/all"
 module load code-server/4.106.3
 
 # Set our working directory.

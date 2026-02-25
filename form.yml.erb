@@ -2,17 +2,10 @@
 cluster: "slurm"
 
 attributes:
-  auto_queues:
-    widget: "select"
-    label: "Partition/Queue"
-    options:
-      - "short"
-      - "long"
-    value: "short"
-
   cores:
     widget: "number_field"
     label: "Number of cores"
+    help: How many CPU cores to reserve for your session. NB Ensure this is within the maximum allowed by your chosen partition.
     min: 1
     max: 8
     value: 2
@@ -20,6 +13,7 @@ attributes:
   ram:
     widget: "number_field"
     label: "Memory (GB)"
+    help: help: How much RAM to reserve for your session. NB Ensure this is within the maximum allowed by your chosen partition
     min: 1
     max: 64
     value: 4
@@ -28,8 +22,9 @@ attributes:
     widget: "number_field"
     label: "Number of hours"
     min: 1
-    max: 30:00:00
+    max: 240
     value: 2
+    cachable: true
 
 form:
   - auto_queues
