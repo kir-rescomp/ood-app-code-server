@@ -26,8 +26,19 @@ attributes:
     value: 2
     cachable: true
 
+  gpu_account:
+    label: GPU Slurm account
+    help: >
+      Required for GPU partitions. Enter the Slurm account that has been
+      granted GPU access (e.g. <code>gpu_yourgroup.prj</code>).
+      CPU partitions do not need this — leave blank.
+    widget: text_field
+    required: false
+    cachable: true
+
 form:
   - auto_queues
+  - gpu_account
   - cores
   - ram
   - bc_num_hours
