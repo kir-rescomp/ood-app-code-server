@@ -2,16 +2,21 @@
   require File.join(__dir__, 'ood_partitions') unless defined?(OodPartitions)
   cluster_id = 'cluster'   # SITE: must match `cluster:` in form.yml.erb
 
-  gpu_job = OodPartitions.gpu?(auto_queues, cluster_id: cluster_id)
+  queue = partition.to_s.strip
+  unless queue.match?(/\A[A-Za-z0-9_.\-]+\z/)
+    raise ArgumentError, 'Please select a partition.'
+  end
+
+  gpu_job = OodPartitions.gpu?(queue, cluster_id: cluster_id)
   account = gpu_account.to_s.strip
 
   # The form requires the account for GPU partitions; these checks also stop
   # a submission that bypasses the form, with a message the user can act on.
   if gpu_job && account.empty?
-    raise ArgumentError, "The '#{auto_queues}' partition is a GPU partition. " \
+    raise ArgumentError, "The '#{queue}' partition is a GPU partition. " \
                          'Please enter your GPU Slurm account (for example gpu_yourgroup.prj).'
   end
-  if gpu_job && account !~ /\A[A-Za-z0-9_.\-]+\z/
+  if gpu_job && !account.match?(/\A[A-Za-z0-9_.\-]+\z/)
     raise ArgumentError, "'#{account}' is not a valid Slurm account name."
   end
 -%>
