@@ -4,18 +4,20 @@
   cluster_id = 'cluster'   # SITE: the clusters.d file name, without .yml
 -%>
 ---
-cluster: cluster
+cluster: "<%= cluster_id %>"
 
 attributes:
-  auto_queues:
+  # Built by the app rather than OnDemand's auto_queues, which hides
+  # partitions that allow a parent of the user's account (all GPU partitions).
+  partition:
+    widget: select
     label: Partition
-    # OnDemand lists partitions alphabetically, which would otherwise make the
-    # first GPU partition the default selection.
-    value: "short"   # SITE
+    value: "short"   # SITE: default selection
     help: |
       The partitions available to you are listed. Selecting a GPU partition
       asks for the GPU Slurm account to charge the session to.
-    # Partition limits and GPU flags for form.js, taken from Slurm.
+    options: <%= OodPartitions.options(cluster_id: cluster_id).to_json %>
+    # Partition limits and GPU flags for form.js.
     html_options:
       data:
         partitions: <%= OodPartitions.to_json(cluster_id: cluster_id).to_json %>
@@ -29,7 +31,7 @@ attributes:
     required: false
     hide_by_default: true
     cacheable: true
-
+    
   cores:
     widget: "number_field"
     label: "Number of cores"
