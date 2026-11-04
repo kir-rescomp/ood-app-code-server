@@ -29,8 +29,9 @@
   const field = (attr) => document.getElementById(PREFIX + attr);
   const wrapper = (attr) => document.getElementById(PREFIX + attr + '_wrapper');
 
-  // The partition select: auto_queues (discovered from Slurm) or bc_queue.
-  const partitionSelect = field('auto_queues') || field('bc_queue');
+  // The partition select: `partition` (built by the app from Slurm, see
+  // ood_partitions.rb), or OnDemand's own auto_queues / bc_queue.
+  const partitionSelect = field('partition') || field('auto_queues') || field('bc_queue');
   if (!partitionSelect) return;
 
   let partitions = {};
