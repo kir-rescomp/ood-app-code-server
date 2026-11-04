@@ -1,7 +1,35 @@
+<%-
+  # Partition metadata (MaxTime and GPU flag), from ood_partitions.rb in this app.
+  require File.join(__dir__, 'ood_partitions') unless defined?(OodPartitions)
+  cluster_id = 'cluster'   # SITE: the clusters.d file name, without .yml
+-%>
 ---
 cluster: cluster
 
 attributes:
+  auto_queues:
+    label: Partition
+    # OnDemand lists partitions alphabetically, which would otherwise make the
+    # first GPU partition the default selection.
+    value: "short"   # SITE
+    help: |
+      The partitions available to you are listed. Selecting a GPU partition
+      asks for the GPU Slurm account to charge the session to.
+    # Partition limits and GPU flags for form.js, taken from Slurm.
+    html_options:
+      data:
+        partitions: <%= OodPartitions.to_json(cluster_id: cluster_id).to_json %>
+
+  gpu_account:
+    widget: text_field
+    label: GPU Slurm account
+    help: |
+      Required for GPU partitions: the Slurm account that has been granted
+      GPU access (for example `gpu_yourgroup.prj`).
+    required: false
+    hide_by_default: true
+    cacheable: true
+
   cores:
     widget: "number_field"
     label: "Number of cores"
@@ -26,15 +54,6 @@ attributes:
     value: 2
     cachable: true
 
-  gpu_account:
-    label: GPU Slurm account
-    help: >
-      Required for GPU partitions. Enter the Slurm account that has been
-      granted GPU access (e.g. <code>gpu_yourgroup.prj</code>).
-      CPU partitions do not need this — leave blank.
-    widget: text_field
-    required: false
-    cachable: true
 
 form:
   - auto_queues

@@ -1,3 +1,20 @@
+<%-
+  require File.join(__dir__, 'ood_partitions') unless defined?(OodPartitions)
+  cluster_id = 'cluster'   # SITE: must match `cluster:` in form.yml.erb
+
+  gpu_job = OodPartitions.gpu?(auto_queues, cluster_id: cluster_id)
+  account = gpu_account.to_s.strip
+
+  # The form requires the account for GPU partitions; these checks also stop
+  # a submission that bypasses the form, with a message the user can act on.
+  if gpu_job && account.empty?
+    raise ArgumentError, "The '#{auto_queues}' partition is a GPU partition. " \
+                         'Please enter your GPU Slurm account (for example gpu_yourgroup.prj).'
+  end
+  if gpu_job && account !~ /\A[A-Za-z0-9_.\-]+\z/
+    raise ArgumentError, "'#{account}' is not a valid Slurm account name."
+  end
+-%>
 ---
 batch_connect:
   template: "basic"
@@ -6,8 +23,8 @@ script:
   native:
     - "--ntasks=1"
     - "--mem=<%= ram %>G"
-    - "--cpus-per-task=<%= cores %>"<% if auto_queues.start_with?("gpu") %>
-    - "--account"
-    - "<%= gpu_account %>"
-    - "--gpus-per-task"
-    - "1"<% end %>
+    - "--cpus-per-task=<%= cores %>"
+<%- if gpu_job -%>
+    - "--account=<%= account %>"
+    - "--gpus-per-task=1"
+<%- end -%>
