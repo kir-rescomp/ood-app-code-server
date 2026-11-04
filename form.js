@@ -1,66 +1,136 @@
-// Map partition names to their time limits in hours
-const partitionMaxHours = {
-  "short":               30,   // 1-06:00:00
-  "long":               240,   // 10-00:00:00
-  "himem":              240,
-  "gpu_interactive":     12,
-  "gpu_p100_16gb":       60,
-  "gpu_v100_16gb":       60,
-  "gpu_v100_32gb":       60,
-  "gpu_a100_40gb":       60,
-  "gpu_a100_80gb":       60,
-  "gpu_rtx8000_48gb":    60,
-  "gpu_gh200_144gb":     60,
-  "relion":             240,
-  "fraser":             240,
-  "brcgel":             240,
-  "win":                240,
-  "cloudcomp":          240,
-};
+// form.js: GPU partition behaviour for Open OnDemand 4.x Batch Connect apps.
+// Replaces the app's previous form.js; OnDemand loads only a file of this name.
+//
+// When the selected partition is a GPU partition:
+//   - the "GPU Slurm account" field (attribute `gpu_account`) is shown and
+//     made required; otherwise it is hidden and not required. Its value is
+//     kept, so switching partitions does not lose it; submit.yml.erb uses it
+//     only for GPU partitions.
+// For every partition:
+//   - the "Number of hours" field (`bc_num_hours`) is limited to the
+//     partition's MaxTime, and its help text states the limit.
+//
+// Partition limits and GPU flags come from Slurm, through the JSON that
+// form.yml.erb places on the partition select as `data-partitions`
+// (see ood_partitions.rb). New partitions therefore need no change here.
+// If that data is missing, a partition whose name begins with "gpu" is
+// treated as a GPU partition and the hours limit is left as configured.
+//
+// Written for OnDemand 4.x markup: each field is wrapped in
+// `<div id="batch_connect_session_context_<attr>_wrapper">`, and hidden with
+// Bootstrap 5's `d-none` class (Bootstrap 3's `.form-group` no longer exists).
 
-function updateMaxHours() {
-  const partition  = $("#batch_connect_session_context_auto_queues").val();
-  const maxHours   = partitionMaxHours[partition] || 240;
-  const hoursField = $("#batch_connect_session_context_bc_num_hours");
+(function () {
+  'use strict';
 
-  hoursField.attr("max", maxHours);
+  const PREFIX = 'batch_connect_session_context_';
+  const GPU_NAME = /^gpu/i;
 
-  const currentVal = parseInt(hoursField.val(), 10);
-  if (currentVal > maxHours) {
-    hoursField.val(maxHours);
+  const field = (attr) => document.getElementById(PREFIX + attr);
+  const wrapper = (attr) => document.getElementById(PREFIX + attr + '_wrapper');
+
+  // The partition select: auto_queues (discovered from Slurm) or bc_queue.
+  const partitionSelect = field('auto_queues') || field('bc_queue');
+  if (!partitionSelect) return;
+
+  let partitions = {};
+  try {
+    partitions = JSON.parse(partitionSelect.dataset.partitions || '{}') || {};
+  } catch (e) {
+    partitions = {};
   }
 
-  hoursField.closest(".form-group")
-    .find(".form-text")
-    .text(
-      `Maximum runtime in hours for your session. ` +
-      `The '${partition}' partition allows up to ${maxHours} hour(s).`
-    );
-}
+  // Help text element of a field: bootstrap_form renders
+  // <small class="form-text text-muted"> after the input.
+  function helpElement(attr, create) {
+    const wrap = wrapper(attr);
+    if (!wrap) return null;
+    let help = wrap.querySelector('.form-text');
+    if (!help && create) {
+      const input = field(attr);
+      if (!input) return null;
+      help = document.createElement('small');
+      help.className = 'form-text text-muted';
+      input.insertAdjacentElement('afterend', help);
+    }
+    return help;
+  }
 
-function updateGpuAccountField() {
-  const partition       = $("#batch_connect_session_context_auto_queues").val();
-  const isGpu           = partition.startsWith("gpu_");
-  const gpuAccountGroup = $("#batch_connect_session_context_gpu_account")
-                            .closest(".form-group");
+  function isGpuPartition(name) {
+    const meta = partitions[name];
+    return meta ? Boolean(meta.gpu) : GPU_NAME.test(name || '');
+  }
 
-  if (isGpu) {
-    gpuAccountGroup.show();
-    $("#batch_connect_session_context_gpu_account").attr("required", true);
+  function updateGpuAccount(name) {
+    const input = field('gpu_account');
+    const wrap = wrapper('gpu_account');
+    if (!input || !wrap) return;
+
+    const gpu = isGpuPartition(name);
+    wrap.classList.toggle('d-none', !gpu);
+    input.required = gpu;
+    input.setAttribute('aria-required', gpu ? 'true' : 'false');
+  }
+
+  function updateHours(name) {
+    const input = field('bc_num_hours');
+    if (!input) return;
+
+    // Remember the configured maximum and help text, so that a partition
+    // without a MaxTime restores them.
+    if (input.dataset.configuredMax === undefined) {
+      input.dataset.configuredMax = input.getAttribute('max') || '';
+      const help = helpElement('bc_num_hours', false);
+      input.dataset.configuredHelp = help ? help.innerHTML : '';
+    }
+
+    const meta = partitions[name];
+    const maxHours = meta && meta.max_hours ? parseInt(meta.max_hours, 10) : null;
+    const configuredMax = input.dataset.configuredMax;
+
+    if (maxHours) {
+      input.setAttribute('max', String(maxHours));
+    } else if (configuredMax) {
+      input.setAttribute('max', configuredMax);
+    } else {
+      input.removeAttribute('max');
+    }
+
+    const limit = parseInt(input.getAttribute('max'), 10);
+    const current = parseInt(input.value, 10);
+    if (!Number.isNaN(limit) && !Number.isNaN(current) && current > limit) {
+      input.value = String(limit);
+    }
+
+    if (maxHours) {
+      const help = helpElement('bc_num_hours', true);
+      if (help) {
+        help.textContent =
+          'Maximum runtime in hours for the session. The ‘' + name +
+          '’ partition allows up to ' + maxHours + ' hour' +
+          (maxHours === 1 ? '' : 's') + '.';
+      }
+    } else {
+      const help = helpElement('bc_num_hours', false);
+      if (help) help.innerHTML = input.dataset.configuredHelp || '';
+    }
+  }
+
+  function update() {
+    const name = partitionSelect.value;
+    updateGpuAccount(name);
+    updateHours(name);
+  }
+
+  // OnDemand's own scripts (saved settings, dynamic forms) change the select
+  // with jQuery's trigger('change'), which native listeners do not receive,
+  // so the handler is bound through jQuery when it is available.
+  if (window.jQuery) {
+    window.jQuery(partitionSelect).on('change', update);
+    window.jQuery(update);
   } else {
-    gpuAccountGroup.hide();
-    $("#batch_connect_session_context_gpu_account")
-      .removeAttr("required")
-      .val("");
+    partitionSelect.addEventListener('change', update);
+    document.addEventListener('DOMContentLoaded', update);
   }
-}
-
-$(document).ready(function () {
-  updateMaxHours();
-  updateGpuAccountField();
-
-  $("#batch_connect_session_context_auto_queues").on("change", function () {
-    updateMaxHours();
-    updateGpuAccountField();
-  });
-});
+  update();
+}());
